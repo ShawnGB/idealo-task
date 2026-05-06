@@ -1,8 +1,8 @@
-import { AppError } from '../../lib/AppError.js'
+import { Injectable } from '@nestjs/common';
 
-export function getHelloMessage(name?: string): HelloMessage {
-  if (name === 'error') {
-    throw new AppError(400, 'VALIDATION_ERROR', 'Invalid name')
+@Injectable()
+export class HelloService {
+  getHello(): HelloMessage {
+    return { message: 'Hello from NestJS!' };
   }
-  return { message: name ? `Hello, ${name}` : 'Hello from Express' }
 }

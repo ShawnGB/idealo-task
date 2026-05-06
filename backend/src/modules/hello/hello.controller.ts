@@ -1,7 +1,12 @@
-import type { Request, Response } from 'express'
-import { getHelloMessage } from './hello.service.js'
+import { Controller, Get } from '@nestjs/common';
+import { HelloService } from './hello.service';
 
-export function getHello(req: Request, res: Response): void {
-  const name = typeof req.query.name === 'string' ? req.query.name : undefined
-  res.json(getHelloMessage(name))
+@Controller('hello')
+export class HelloController {
+  constructor(private readonly helloService: HelloService) {}
+
+  @Get()
+  getHello(): HelloMessage {
+    return this.helloService.getHello();
+  }
 }
