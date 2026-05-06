@@ -18,3 +18,9 @@ interface ApiError {
 type ApiResponse<T> =
   | { data: T; error: null }
   | { data: null; error: ApiError }
+
+interface ProductGallery {
+  product_id: string
+  images: string[]
+  updatedAt: string
+}

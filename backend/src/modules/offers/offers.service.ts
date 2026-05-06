@@ -1,15 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ProductState } from './entities/product-state.entity';
 import { ImageValidatorService } from './image-validator.service';
 import { GalleryEventService } from './gallery-event.service';
-import { ImageCandidate, mergeAndRank, determineTrigger } from './ranking';
+import { ImageCandidate, GalleryUpdateReason, mergeAndRank, determineTrigger } from './ranking';
 
 export interface ProcessOfferResult {
   product_id: string;
   accepted_images: string[];
   event_emitted: boolean;
+  reason: GalleryUpdateReason | null;
 }
 
 @Injectable()
@@ -62,6 +63,21 @@ export class OffersService {
       product_id: productId,
       accepted_images: accepted,
       event_emitted: reason !== null,
+      reason,
+    };
+  }
+
+  async getProductGallery(productId: string): Promise<ProductGallery> {
+    const state = await this.productStateRepo.findOne({
+      where: { productId },
+    });
+    if (!state) {
+      throw new NotFoundException(`Product ${productId} not found`);
+    }
+    return {
+      product_id: state.productId,
+      images: state.candidates.map((c) => c.url),
+      updatedAt: state.updatedAt.toISOString(),
     };
   }
 }

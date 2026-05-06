@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
 import { OffersService, ProcessOfferResult } from './offers.service';
 import { CreateOfferDto } from './dto/create-offer.dto';
 
@@ -16,6 +16,14 @@ export class OffersController {
       dto.merchant_score,
       dto.image_urls,
     );
+    return { data, error: null };
+  }
+
+  @Get('products/:productId')
+  async getProductGallery(
+    @Param('productId') productId: string,
+  ): Promise<ApiResponse<ProductGallery>> {
+    const data = await this.offersService.getProductGallery(productId);
     return { data, error: null };
   }
 }
