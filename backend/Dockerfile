@@ -13,4 +13,4 @@ COPY backend ./backend
 
 WORKDIR /app/backend
 
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "start:dev"]
