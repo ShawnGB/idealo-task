@@ -1,4 +1,9 @@
-import { ExceptionFilter, Catch, ArgumentsHost, HttpException } from '@nestjs/common';
+import {
+  ExceptionFilter,
+  Catch,
+  ArgumentsHost,
+  HttpException,
+} from '@nestjs/common';
 import { Response } from 'express';
 
 const statusToCode: Record<number, ApiErrorCode> = {
@@ -14,8 +19,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const statusCode = exception.getStatus();
 
+    const rawResponse = exception.getResponse();
+    const responseMessage =
+      typeof rawResponse === 'object' && rawResponse !== null
+        ? (rawResponse as Record<string, unknown>).message
+        : undefined;
+    const message = Array.isArray(responseMessage)
+      ? (responseMessage as string[]).join('; ')
+      : exception.message;
+
     const error: ApiError = {
-      message: exception.message,
+      message,
       code: statusToCode[statusCode] ?? 'INTERNAL_ERROR',
       statusCode,
     };
