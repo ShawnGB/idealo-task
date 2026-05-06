@@ -1,0 +1,24 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "zod": "^4.4.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@vitest/coverage-v8": "^4.1.5",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.5"
+  }
+}
