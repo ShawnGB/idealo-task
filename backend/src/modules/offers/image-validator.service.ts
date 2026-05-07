@@ -28,10 +28,14 @@ export class ImageValidatorService {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
-      const res = await fetch(url, {
+      let res = await fetch(url, {
         method: 'HEAD',
         signal: controller.signal,
       });
+      if (res.status === 405) {
+        res = await fetch(url, { method: 'GET', signal: controller.signal });
+        res.body?.cancel().catch(() => {});
+      }
       const contentType = res.headers.get('content-type') ?? '';
       return res.ok && contentType.startsWith('image/');
     } catch {

@@ -98,6 +98,44 @@ describe('ImageValidatorService', () => {
       expect(fetchSpy).not.toHaveBeenCalled();
     });
 
+    it('falls back to GET when HEAD returns 405 and accepts if content-type is image/*', async () => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 405,
+          headers: { get: () => null },
+        } as unknown as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: { get: () => 'image/jpeg' },
+          body: { cancel: jest.fn().mockResolvedValue(undefined) },
+        } as unknown as Response);
+
+      const result = await service.validateImages(['https://example.com/img.jpg']);
+      expect(result).toEqual(['https://example.com/img.jpg']);
+    });
+
+    it('rejects when GET fallback after 405 returns non-image content-type', async () => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 405,
+          headers: { get: () => null },
+        } as unknown as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: { get: () => 'text/html' },
+          body: { cancel: jest.fn().mockResolvedValue(undefined) },
+        } as unknown as Response);
+
+      const result = await service.validateImages(['https://example.com/img.jpg']);
+      expect(result).toEqual([]);
+    });
+
     it('validates multiple URLs in parallel and returns only accepted ones', async () => {
       jest
         .spyOn(global, 'fetch')
