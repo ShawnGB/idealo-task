@@ -1,24 +1,31 @@
-# App Template
+# Product Gallery Ingest
 
-A fork-ready full-stack TypeScript monorepo template.
+A full-stack TypeScript monorepo. Merchants submit image offers for a product; the service validates, ranks, and persists the best images, then fires a `gallery:update` event when the gallery changes. A demo UI at `/offers` lets you submit offers and watch the gallery state update live.
 
 ## Stack
 
-| Layer | Technology | Version |
-|---|---|---|
-| Runtime | Node.js | 22 |
-| Language | TypeScript | 6 |
-| Backend | Express | 5 |
-| Frontend | React | 19 |
-| Routing | React Router | 7 |
-| Bundler | Vite | 8+ |
-| Dev runner | tsx | 4 |
-| Containers | Docker Compose | v2 |
-| Packages | npm workspaces | — |
+| Layer | Technology |
+|---|---|
+| Backend | NestJS 11 + TypeScript |
+| Database | SQLite via TypeORM (file `data/db.sqlite`, `:memory:` in tests) |
+| Frontend | React 19 + React Router 7 (SSR) + Tailwind CSS v4 + shadcn/ui |
+| Shared types | `packages/shared/src/globals.d.ts` — ambient globals, no imports |
+| Containers | Docker Compose v2 |
+| Packages | npm workspaces |
 
-## Quick Start
+## Quick start
 
-### Local
+### Docker (recommended)
+
+```bash
+docker compose up --build        # first run
+docker compose up                # subsequent runs
+docker compose down -v && docker compose up --build  # after changing dependencies
+```
+
+Frontend: http://localhost:5173 · Backend: http://localhost:3001
+
+### Local dev
 
 ```bash
 npm install
@@ -26,230 +33,110 @@ npm run dev --workspace=backend    # http://localhost:3001
 npm run dev --workspace=frontend   # http://localhost:5173
 ```
 
-### Docker
+### Tests
 
 ```bash
-docker compose up --build                              # first run
-docker compose up                                      # subsequent runs
-docker compose down                                    # stop
-docker compose down -v && docker compose up --build    # after changing dependencies
+npm test                            # all tests
+npm run test --workspace=backend    # backend unit + e2e (Jest)
+npm run test --workspace=frontend   # frontend unit (Vitest)
 ```
 
-### Testing
+---
 
-```bash
-npm test                             # run all tests (backend + frontend)
-npm run test --workspace=backend     # backend only
-npm run test --workspace=frontend    # frontend only
-```
+## How it works
 
-## Project Structure
+### Offer ingestion — `POST /api/offers`
 
-```
-├── backend/
-│   └── src/
-│       ├── modules/        Feature modules (routes + controller + service)
-│       │   └── hello/
-│       ├── middleware/     errorHandler, notFound
-│       ├── lib/            Shared utilities (AppError)
-│       ├── config/         env.ts (zod-validated), envSchema.ts
-│       └── index.ts        App entry point
-├── frontend/
-│   └── app/
-│       ├── components/     Shared UI components (ErrorBoundary)
-│       ├── hooks/          Custom React hooks (useRouteErrorMessage)
-│       ├── lib/            Utilities (fetchApi, isApiError)
-│       ├── store/          State management (empty — add Zustand/Redux/etc. here)
-│       ├── routes/         File-based routes
-│       └── root.tsx        Root HTML layout
-├── packages/
-│   └── shared/
-│       └── src/
-│           └── globals.d.ts  Global ambient types (no imports needed)
-└── docker-compose.yml
-```
-
-## Path Aliases
-
-Both workspaces expose `@/` as a shortcut to their source root:
-
-| Import | Resolves to |
-|---|---|
-| `@/lib/api` | `frontend/app/lib/api.ts` |
-| `@/lib/AppError.js` | `backend/src/lib/AppError.ts` |
-
-> **Backend production build note:** `@/` is resolved at dev time by `tsx`. If you add a `tsc` build step, install `tsc-alias` and run `tsc-alias -p tsconfig.json` after `tsc` to rewrite the paths in the compiled output.
-
-## Shared Types
-
-Types in `packages/shared/src/globals.d.ts` are globally available in both backend and frontend — no import needed.
-
-```typescript
-// Just use them directly in any file:
-const response: ApiResponse<HelloMessage> = ...
-const err: ApiError = ...
-```
-
-To add a new shared type, add it to `globals.d.ts` as an `interface` or `type` (no `export` keyword).
-
-## Error Handling
-
-The template ships a typed error contract that runs end-to-end.
-
-**Backend — throwing errors**
-
-Services throw `AppError` for expected failures. `errorHandler` (registered last in `index.ts`) converts it to `ApiError` JSON automatically. Unknown errors log and return a generic 500.
-
-```typescript
-import { AppError } from '@/lib/AppError.js'
-
-// In a service:
-if (!found) throw new AppError(404, 'NOT_FOUND', 'Resource not found')
-```
-
-`ApiErrorCode` values are declared in `packages/shared/src/globals.d.ts`. Add codes there as the app grows.
-
-**Frontend — consuming errors**
-
-`fetchApi<T>` never throws — it always resolves to `ApiResponse<T>`:
-
-```typescript
-import { fetchApi } from '@/lib/api'
-
-const result = await fetchApi<MyType>('/api/resource')
-
-if (result.error) {
-  // result.error is ApiError — typed, never null here
-  console.error(result.error.message)
-} else {
-  // result.data is MyType — never null here
+```json
+{
+  "product_id": "EAN-001",
+  "merchant_id": "merchant-demo",
+  "merchant_score": 85,
+  "image_urls": ["https://example.com/img1.jpg"]
 }
 ```
 
-For route-level crashes (unexpected throws, network failures before a response), export `ErrorBoundary` from `@/components/ErrorBoundary` in your route file:
+Three steps:
 
-```typescript
-export { ErrorBoundary } from '@/components/ErrorBoundary'
-```
+**1. Image validation** (`ImageValidatorService`)
+Each URL is checked with a HEAD request. If the host returns `405 Method Not Allowed`, the service falls back to a GET (body cancelled immediately after headers). URLs that don't return an `image/*` content-type are dropped.
 
-`useRouteErrorMessage` (`@/hooks/useRouteErrorMessage`) extracts a human-readable string from any React Router error shape — use it if you need a custom error UI.
+**2. Ranking** (`ranking.ts`)
+Accepted images are merged with the product's existing candidates. Each candidate is scored by `merchantScore × imageCount`. The top 5 survive. `determineTrigger` compares the old and new candidate lists and returns the reason the gallery changed — `first_images`, `top_image_changed`, or `merchant_added` — or `null` if nothing meaningful changed.
 
-## Environment Variables
+**3. Persistence + events** (`GalleryEventService`)
+The merged state is saved to `ProductState` via TypeORM. If the trigger reason is non-null, a `gallery:update` event is emitted with the images and reason.
 
-Copy `backend/.env.example` to `backend/.env` and fill in values:
+**Response:**
 
-```bash
-cp backend/.env.example backend/.env
-```
-
-The backend validates all env vars at startup using zod — if a required var is missing or has the wrong type, the process exits immediately with a clear error message.
-
-To add a new backend env var:
-
-1. Add it to `backend/src/config/envSchema.ts`:
-   ```typescript
-   export const envSchema = z.object({
-     PORT: z.coerce.number().default(3001),
-     DATABASE_URL: z.string().url(),  // add here
-   })
-   ```
-2. Add it to `backend/.env.example` and `backend/.env`
-3. Access it anywhere via `env.DATABASE_URL` (import `env` from `@/config/env.js`)
-
-Add `VITE_*` frontend variables to `frontend/app/vite-env.d.ts` to keep them typed:
-
-```typescript
-interface ImportMetaEnv {
-  readonly VITE_API_URL: string  // example
+```json
+{
+  "data": {
+    "product_id": "EAN-001",
+    "accepted_images": ["https://example.com/img1.jpg"],
+    "event_emitted": true,
+    "reason": "first_images"
+  },
+  "error": null
 }
 ```
 
-## Adding a Backend Feature
+### Gallery read — `GET /api/offers/products/:productId`
 
-1. Create `backend/src/modules/<name>/`:
-   - `<name>.service.ts` — business logic (no Express imports)
-   - `<name>.controller.ts` — calls service, sends response
-   - `<name>.routes.ts` — `Router()`, registers endpoints
-2. Mount the router in `backend/src/index.ts`:
-   ```typescript
-   import nameRouter from './modules/<name>/<name>.routes.js'
-   app.use('/<name>', nameRouter)
-   ```
+Returns the current top images for a product. Returns `404` if no valid offer has been submitted yet.
 
-## Adding a Frontend Route
-
-Add a file to `frontend/app/routes/`. React Router picks it up automatically.
-
-| File | URL |
-|---|---|
-| `_index.tsx` | `/` |
-| `about.tsx` | `/about` |
-| `posts.$id.tsx` | `/posts/:id` |
-| `dashboard._index.tsx` | `/dashboard` (nested) |
-
-Each route file can export:
-- `clientLoader` — fetch data before rendering (SPA mode; use `clientLoader`, not `loader`)
-- `action` — handle form submissions
-- `ErrorBoundary` — error UI for this route (re-export from `@/components/ErrorBoundary` or define locally)
-- `default` — the page component
-
-## Express 5 Notes
-
-> For reviewers familiar with Express 4
-
-**Async errors bubble automatically.** In Express 4, async errors had to be caught and forwarded:
-
-```typescript
-// Express 4 — required
-app.get('/path', async (req, res, next) => {
-  try {
-    const data = await riskyOperation()
-    res.json(data)
-  } catch (err) {
-    next(err)
-  }
-})
+```json
+{
+  "data": {
+    "product_id": "EAN-001",
+    "images": ["https://example.com/img1.jpg"],
+    "updatedAt": "2026-05-07T09:22:54.000Z"
+  },
+  "error": null
+}
 ```
 
-In Express 5, throwing from an async handler (or returning a rejected promise) is caught by the router automatically:
+### Error shape
 
-```typescript
-// Express 5 — throw, Express handles it
-app.get('/path', async (req, res) => {
-  const data = await riskyOperation()
-  res.json(data)
-})
+All errors follow the same `ApiError` contract:
+
+```json
+{ "message": "...", "code": "NOT_FOUND", "statusCode": 404 }
 ```
 
-No `next`, no try/catch in controllers.
+---
 
-Other changes relevant to this template:
-- `express.json()` is built in (since Express 4.16) — no need for the `body-parser` package
-- Route path syntax changed in Express 5 (path-to-regexp v8) — some Express 4 regex-style paths are invalid
+## Demo UI — `/offers`
 
-## React Router v7 Notes
+Submit offers and watch the gallery update in real time. The form is pre-filled for instant demo use.
 
-> For reviewers familiar with React Router v5/v6 or Next.js
+- **Gallery State panel** — refreshes after each submit via `useFetcher`. Shows ranked image thumbnails with a `#1` badge on the top candidate.
+- **Event Feed** — accumulates POST results in component state (session only). Shows whether `gallery:update` was fired, the trigger reason, and how many images were accepted.
 
-**Single package.** `react-router` v7 replaces both `react-router` and `react-router-dom`. Import everything from `'react-router'`.
+---
 
-**SPA mode.** This template uses `ssr: false` in `react-router.config.ts`. Loaders run in the browser — they are typed `fetch` calls, not server-side functions.
+## Project structure
 
-**File-based routing.** Files in `app/routes/` are registered automatically. No route definition file needed.
-
-**Generated types.** React Router generates per-route types into `frontend/.react-router/types/` at dev/build time. This directory is gitignored — it appears after the first `npm run dev`.
-
-**Root layout requirements.** `app/root.tsx` must include `<Scripts />` and `<ScrollRestoration />` from `'react-router'`. These are required by framework mode — they inject the client bundle and restore scroll position between navigations.
-
-## Forking This Template
-
-1. `package.json` → change `"name": "app"` to your project name
-2. `packages/shared/package.json` → change `"name": "@app/shared"` to `@yourscope/shared`
-3. Update all references to `@app/shared` in:
-   - `backend/tsconfig.json` (paths alias key — if you re-add a module alias)
-   - `frontend/tsconfig.json` (paths alias key — if you re-add a module alias)
-   - `frontend/vite.config.ts` (alias key — if you re-add a Vite alias)
-4. Replace `backend/src/modules/hello/` with your first feature module
-5. Replace `frontend/app/routes/_index.tsx` with your home route
-6. Add your env vars to `backend/src/config/envSchema.ts` and `.env.example`
-7. Run `npm install` to regenerate `package-lock.json`
+```
+├── backend/src/
+│   ├── app.module.ts
+│   ├── main.ts
+│   ├── filters/              HttpExceptionFilter → ApiError JSON
+│   └── modules/offers/
+│       ├── offers.controller.ts   POST /offers, GET /offers/products/:productId
+│       ├── offers.service.ts      processOffer, getProductGallery
+│       ├── ranking.ts             mergeAndRank, determineTrigger, scoring
+│       ├── image-validator.service.ts  HEAD + GET-fallback content-type check
+│       ├── gallery-event.service.ts    Emits gallery:update events
+│       ├── dto/                   CreateOfferDto (class-validator)
+│       └── entities/              ProductState (TypeORM entity)
+├── frontend/app/
+│   ├── routes/
+│   │   ├── _index.tsx        GET /api/hello demo
+│   │   └── offers.tsx        /offers demo page
+│   └── lib/
+│       ├── api.ts            fetchApi<T> — never throws, resolves to ApiResponse<T>
+│       └── errors.ts         isApiError type guard
+└── packages/shared/src/
+    └── globals.d.ts          ApiError, ApiResponse<T>, ProductGallery (ambient globals)
+```
