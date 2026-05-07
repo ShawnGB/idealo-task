@@ -1,4 +1,5 @@
-import { mergeAndRank, determineTrigger, ImageCandidate } from './ranking';
+import { mergeAndRank, ImageCandidate } from './ranking';
+import { determineTrigger } from './gallery-triggers';
 
 const c = (url: string, imageCount = 1, merchantScore = 80): ImageCandidate => ({
   url,

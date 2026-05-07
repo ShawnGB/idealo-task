@@ -4,7 +4,8 @@ import { Repository } from 'typeorm';
 import { ProductState } from './entities/product-state.entity';
 import { ImageValidatorService } from './image-validator.service';
 import { GalleryEventService } from './gallery-event.service';
-import { ImageCandidate, GalleryUpdateReason, mergeAndRank, determineTrigger } from './ranking';
+import { ImageCandidate, mergeAndRank } from './ranking';
+import { GalleryUpdateReason, determineTrigger } from './gallery-triggers';
 
 export interface ProcessOfferResult {
   product_id: string;

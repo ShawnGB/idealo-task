@@ -98,14 +98,16 @@ describe('ImageValidatorService', () => {
       expect(fetchSpy).not.toHaveBeenCalled();
     });
 
+    const head405: Response = {
+      ok: false,
+      status: 405,
+      headers: { get: () => null },
+    } as unknown as Response;
+
     it('falls back to GET when HEAD returns 405 and accepts if content-type is image/*', async () => {
       jest
         .spyOn(global, 'fetch')
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 405,
-          headers: { get: () => null },
-        } as unknown as Response)
+        .mockResolvedValueOnce(head405)
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
@@ -120,11 +122,7 @@ describe('ImageValidatorService', () => {
     it('rejects when GET fallback after 405 returns non-image content-type', async () => {
       jest
         .spyOn(global, 'fetch')
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 405,
-          headers: { get: () => null },
-        } as unknown as Response)
+        .mockResolvedValueOnce(head405)
         .mockResolvedValueOnce({
           ok: true,
           status: 200,

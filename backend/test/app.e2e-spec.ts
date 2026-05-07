@@ -6,21 +6,24 @@ import { AppModule } from './../src/app.module';
 import { HttpExceptionFilter } from './../src/filters/http-exception.filter';
 import { GalleryEventService } from './../src/modules/offers/gallery-event.service';
 
+async function createApp(): Promise<{ app: INestApplication<App>; moduleFixture: TestingModule }> {
+  process.env.DATABASE_PATH = ':memory:';
+  const moduleFixture = await Test.createTestingModule({
+    imports: [AppModule],
+  }).compile();
+  const app = moduleFixture.createNestApplication();
+  app.setGlobalPrefix('api');
+  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+  await app.init();
+  return { app, moduleFixture };
+}
+
 describe('HelloController (e2e)', () => {
   let app: INestApplication<App>;
 
   beforeEach(async () => {
-    process.env.DATABASE_PATH = ':memory:';
-
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api');
-    app.useGlobalFilters(new HttpExceptionFilter());
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
-    await app.init();
+    ({ app } = await createApp());
   });
 
   afterEach(async () => {
@@ -54,17 +57,8 @@ describe('OffersController (e2e)', () => {
   let emitSpy: jest.SpyInstance;
 
   beforeEach(async () => {
-    process.env.DATABASE_PATH = ':memory:';
-
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api');
-    app.useGlobalFilters(new HttpExceptionFilter());
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
-    await app.init();
+    let moduleFixture: TestingModule;
+    ({ app, moduleFixture } = await createApp());
 
     const galleryEvent =
       moduleFixture.get<GalleryEventService>(GalleryEventService);

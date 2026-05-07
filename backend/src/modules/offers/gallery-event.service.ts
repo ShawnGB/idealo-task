@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { GalleryUpdateReason } from './ranking';
+import { GalleryUpdateReason } from './gallery-triggers';
 
 export interface GalleryUpdateEvent {
   event_type: 'gallery:update';

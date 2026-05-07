@@ -18,22 +18,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const statusCode = exception.getStatus();
-
-    const rawResponse = exception.getResponse();
-    const responseMessage =
-      typeof rawResponse === 'object' && rawResponse !== null
-        ? (rawResponse as Record<string, unknown>).message
-        : undefined;
-    const message = Array.isArray(responseMessage)
-      ? (responseMessage as string[]).join('; ')
-      : exception.message;
-
     const error: ApiError = {
-      message,
+      message: resolveMessage(exception),
       code: statusToCode[statusCode] ?? 'INTERNAL_ERROR',
       statusCode,
     };
-
     response.status(statusCode).json(error);
   }
+}
+
+function resolveMessage(exception: HttpException): string {
+  const raw = exception.getResponse();
+  if (typeof raw !== 'object' || raw === null) return exception.message;
+  const msg = (raw as Record<string, unknown>).message;
+  return Array.isArray(msg) ? (msg as string[]).join('; ') : exception.message;
 }

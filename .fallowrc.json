@@ -1,0 +1,5 @@
+{
+  "$schema": "https://docs.fallow.tools/schema/fallowrc.json",
+  "entry": ["backend/test/**/*.e2e-spec.ts"],
+  "ignoreDependencies": ["better-sqlite3", "@nestjs/schematics", "tsconfig-paths", "eslint-config-prettier"]
+}
