@@ -82,16 +82,17 @@ describe('OffersController (e2e)', () => {
     delete process.env.DATABASE_PATH;
   });
 
-  it('POST /api/offers returns 200 with accepted images and emits gallery:update', async () => {
+  it('POST /api/offers returns 201 with accepted images and emits gallery:update', async () => {
     await request(app.getHttpServer())
       .post('/api/offers')
       .send({
+        offer_id: 'offer-123',
         product_id: 'EAN-123',
         merchant_id: 'merchant-1',
         merchant_score: 85,
-        image_urls: ['https://example.com/img.jpg'],
+        images: ['https://example.com/img.jpg'],
       })
-      .expect(200)
+      .expect(201)
       .expect((res) => {
         expect(res.body).toMatchObject({
           data: {
@@ -127,10 +128,11 @@ describe('OffersController (e2e)', () => {
       });
   });
 
-  it('POST /api/offers returns 200 with empty accepted_images and no event when all URLs fail HEAD check', async () => {
+  it('POST /api/offers returns 201 with empty accepted_images and no event when all URLs fail HEAD check', async () => {
     jest.restoreAllMocks();
     jest.spyOn(global, 'fetch').mockResolvedValue({
       ok: false,
+      status: 400,
       headers: { get: () => 'text/html' },
     } as unknown as Response);
 
@@ -143,9 +145,9 @@ describe('OffersController (e2e)', () => {
         product_id: 'EAN-456',
         merchant_id: 'merchant-2',
         merchant_score: 70,
-        image_urls: ['https://example.com/broken.jpg'],
+        images: ['https://example.com/broken.jpg'],
       })
-      .expect(200)
+      .expect(201)
       .expect((res) => {
         expect(res.body).toMatchObject({
           data: {

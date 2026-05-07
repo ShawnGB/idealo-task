@@ -7,14 +7,14 @@ export class OffersController {
   constructor(private readonly offersService: OffersService) {}
 
   @Post()
-  @HttpCode(200)
+  @HttpCode(201)
   async createOffer(
     @Body() dto: CreateOfferDto,
   ): Promise<ApiResponse<ProcessOfferResult>> {
     const data = await this.offersService.processOffer(
       dto.product_id,
       dto.merchant_score,
-      dto.image_urls,
+      dto.images,
     );
     return { data, error: null };
   }

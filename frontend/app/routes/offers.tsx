@@ -93,7 +93,7 @@ export default function OffersPage() {
     e.preventDefault()
     const form = e.currentTarget
     const data = new FormData(form)
-    const imageUrls = (data.get('image_urls') as string)
+    const imageUrls = (data.get('images') as string)
       .split('\n')
       .map((u) => u.trim())
       .filter(Boolean)
@@ -103,7 +103,7 @@ export default function OffersPage() {
         product_id: data.get('product_id') as string,
         merchant_id: data.get('merchant_id') as string,
         merchant_score: Number(data.get('merchant_score')),
-        image_urls: imageUrls,
+        images: imageUrls,
       },
       { method: 'POST', action: '/offers', encType: 'application/json' },
     )
@@ -158,7 +158,7 @@ export default function OffersPage() {
               <label className="flex flex-col gap-1 text-sm font-medium">
                 Image URLs (one per line)
                 <textarea
-                  name="image_urls"
+                  name="images"
                   defaultValue={DEFAULT_URLS}
                   rows={4}
                   className="border rounded px-2 py-1 font-mono text-xs font-normal"

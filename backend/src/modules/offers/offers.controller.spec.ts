@@ -35,7 +35,7 @@ describe('OffersController', () => {
         product_id: 'EAN-123',
         merchant_id: 'merchant-1',
         merchant_score: 85,
-        image_urls: ['https://example.com/img.jpg'],
+        images: ['https://example.com/img.jpg'],
       });
 
       expect(result).toEqual({ data: serviceResult, error: null });
@@ -53,7 +53,7 @@ describe('OffersController', () => {
         product_id: 'EAN-123',
         merchant_id: 'merchant-1',
         merchant_score: 85,
-        image_urls: ['https://example.com/img.jpg'],
+        images: ['https://example.com/img.jpg'],
       });
 
       expect(mockOffersService.processOffer).toHaveBeenCalledWith(

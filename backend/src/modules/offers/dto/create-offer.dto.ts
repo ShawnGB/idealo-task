@@ -1,6 +1,10 @@
-import { IsArray, IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsArray, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateOfferDto {
+  @IsString()
+  @IsOptional()
+  offer_id?: string;
+
   @IsString()
   @IsNotEmpty()
   product_id: string;
@@ -14,5 +18,5 @@ export class CreateOfferDto {
 
   @IsArray()
   @IsString({ each: true })
-  image_urls: string[];
+  images: string[];
 }
