@@ -18,7 +18,6 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: process.env.BACKEND_URL ?? 'http://localhost:3001',
-        rewrite: (p) => p.replace(/^\/api/, ''),
       },
     },
   },
