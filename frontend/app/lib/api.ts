@@ -8,10 +8,10 @@ function resolveUrl(url: string): string {
   return url
 }
 
-export async function fetchApi<T>(url: string): Promise<ApiResponse<T>> {
+export async function fetchApi<T>(url: string, init?: RequestInit): Promise<ApiResponse<T>> {
   let res: Response
   try {
-    res = await fetch(resolveUrl(url))
+    res = await fetch(resolveUrl(url), init)
   } catch {
     return { data: null, error: { message: 'Network error', code: 'UNKNOWN', statusCode: 0 } }
   }

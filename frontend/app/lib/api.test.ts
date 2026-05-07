@@ -63,6 +63,23 @@ describe('fetchApi', () => {
       error: { message: 'Network error', code: 'UNKNOWN', statusCode: 0 },
     })
   })
+
+  it('passes RequestInit options to fetch when provided', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ product_id: 'EAN-1', accepted_images: [], event_emitted: false, reason: null }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const init: RequestInit = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ product_id: 'EAN-1' }),
+    }
+    await fetchApi('/api/offers', init)
+
+    expect(mockFetch).toHaveBeenCalledWith('/api/offers', init)
+  })
 })
 
 describe('isApiError', () => {
