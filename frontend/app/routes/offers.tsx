@@ -1,7 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from 'react'
 import { useFetcher } from 'react-router'
 import type { ClientActionFunctionArgs, ClientLoaderFunctionArgs } from 'react-router'
-import { fetchApi } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 
 interface OfferResult {
@@ -35,18 +34,28 @@ export async function clientLoader({
   const url = new URL(request.url)
   const productId = url.searchParams.get('productId')
   if (!productId) return null
-  return fetchApi<ProductGallery>(`/api/offers/products/${productId}`)
+  try {
+    const res = await fetch(`/api/offers/products/${productId}`)
+    return res.json() as Promise<ApiResponse<ProductGallery>>
+  } catch {
+    return { data: null, error: { message: 'Network error', code: 'UNKNOWN', statusCode: 0 } }
+  }
 }
 
 export async function clientAction({
   request,
 }: ClientActionFunctionArgs): Promise<ApiResponse<OfferResult>> {
   const body = await request.json()
-  return fetchApi<OfferResult>('/api/offers', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
+  try {
+    const res = await fetch('/api/offers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    return res.json() as Promise<ApiResponse<OfferResult>>
+  } catch {
+    return { data: null, error: { message: 'Network error', code: 'UNKNOWN', statusCode: 0 } }
+  }
 }
 
 export default function OffersPage() {
