@@ -10,6 +10,9 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./app', import.meta.url)),
     },
   },
+  ssr: {
+    noExternal: ['@base-ui/react'],
+  },
   server: {
     host: true,
     proxy: {
