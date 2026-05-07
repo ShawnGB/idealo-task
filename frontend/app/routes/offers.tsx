@@ -25,6 +25,10 @@ const DEFAULT_SCORE = '85'
 const DEFAULT_URLS =
   'https://picsum.photos/seed/demo1/400/300\nhttps://picsum.photos/seed/demo2/400/300'
 
+export function loader() {
+  return null
+}
+
 export async function clientLoader({
   request,
 }: ClientLoaderFunctionArgs): Promise<ApiResponse<ProductGallery> | null> {
